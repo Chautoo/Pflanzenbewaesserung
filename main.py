@@ -6,9 +6,6 @@ from sensors.PWM_Control import PWM_Control
 
 
 def main():
-    #192.168.189.6
-    #anakin
-    #anakin2025!
 
     # Light Sensor
     LighSensor = BH1750(1, 0x23, 1.0)
