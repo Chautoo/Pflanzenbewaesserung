@@ -1,21 +1,24 @@
-# Utility operations
-import sys
-from logging import exception
-
-import database
+# operations
+from database import *
 
 
-def get_log(air_value=None):
-    conn = None
+# get ony last 5 logs
+def read_data():
+    cursor.execute("SELECT * FROM messwerte ORDER BY ID DESC LIMIT 5")
+    records = cursor.fetchone()
+    for record in records:
+        print(record[0])
+
+# get the average of the last 5
+def print_average_last5(column):
     try:
-        conn = database.get_connection()
-        with conn.cursor() as cursor:
-            if air_value is None:
-                cursor.execute("SELECT * FROM messwerte ORDER BY ID DESC LIMIT 5")
-            else:
-                cursor.execute("SELECT * FROM messwerte WHERE Air=%s ORDER BY ID DESC LIMIT 5", (air_value,))
-            return cursor.fetchone()
-    finally:
-        if conn is not None:
-            conn.close()
-        exception(msg="No database connection")
+        avg = read_data()
+        if avg is None:
+            print("No data available")
+        else:
+            avg = avg[column]
+            avg = avg.mean()
+            print(avg)
+
+    except Exception as e:
+        print("Something went Wrong", e)
