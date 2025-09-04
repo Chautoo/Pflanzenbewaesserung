@@ -1,12 +1,13 @@
-# db connection
-import sys
+# db connection to read, update, delete
 import traceback
+from contextlib import contextmanager
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import pymysql
 import pymysql.cursors
 
 
-# connection to db
+# Connection to database
 def get_connection():
     host = "localhost"
     user = "root"
@@ -18,82 +19,154 @@ def get_connection():
             user=user,
             password=password,
             db=db,
-            charset='utf8mb4',
+            charset='utf8mb4',  # Codepage UTF-8
             cursorclass=pymysql.cursors.DictCursor,
-            connect_timeout=5,
+            connect_timeout=5,  # Try to connect for 5sec
+            autocommit=False,
         )
         return conn
 
     except pymysql.MySQLError as e:
-        err_type = type(e).__name__
+        err_type = type(e).__name__  # extract classname as str
         print(f"Can´t connect to database ({err_type}). Details:")
         print(f"- Host: {host}, User: {user}, DB: {db}")
         print(f"- Errorcode: {e}")
-        traceback.print_exc()
-        raise
+        traceback.print_exc()  # give full stacktrace in console
+        raise  # trigger error again
 
     except Exception as e:
         print("Unknown Error while try to reach the database", type(e).__name__, e)
-        traceback.print_exc()
+        traceback.print_exc()  # give full stacktrace in console
         raise
 
-auth = None
-try:
-    auth = get_connection()
-except Exception as e:
-    print("Auth was not successful.", type(e).__name__, e)
-    sys.exit(1)
+# makes sure that connections are opened and closed successfully
+# contextmanager handels a 'with-block' to manage resources
+@contextmanager
+def connection():
+    conn = None
+    try:
+        conn = get_connection()
+        yield conn  # handles the connection
+        conn.commit()  # automatically raise after 'with-block' finished
+    # if an Error happened, reset connection
+    except Exception:
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        raise
+    # close programm
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
-# read from a database "messwerte"
-sql_messwerte = "SELECT * FROM messwerte"
+# define set and get for table
+def fetch_all(
+        table: str,
+        columns: Optional[Iterable[str]] = None,
+        where: Optional[str] = None,
+        params: Optional[Tuple[Any, ...]] = None,
+        order_by: Optional[str] = None,
+        limit: Optional[int] = None
+) -> List[Dict[str, Any]]:
 
-try:
-    with auth.cursor() as cursor:
-        cursor.execute(sql_messwerte)
-        result = cursor.fetchall()
+    cols = ", ".join(columns) if columns else "*"  # replace  cols with 'x' from row, if not set '*'
+    sql = f"SELECT {cols} FROM {table}"  # get the cols from table 'table'
 
-        for record in result:
-            ID = record.get("ID")
-            PID = record.get("PID")
-            Zeit = record.get("Zeit")
-            Humidity = record.get("Humidity")
-            Light = record.get("Light")
-            Temperature = record.get("Temperature")
-            Air = record.get("Air")
-            print(ID, PID, Zeit, Humidity, Light, Temperature, Air)
+    if where:
+        sql += f" WHERE {where}"
+    if order_by:
+        sql += f" ORDER BY {order_by}"
+    if limit is not None:
+        sql += f" LIMIT {int(limit)}"
 
-except pymysql.MySQLError as e:
-    print("SQL-Error while reading 'messwerte':", e)
-    traceback.print_exc()
+    with connection() as conn:  # connect to db
+        with conn.cursor() as cur:  # create cursor
+            cur.execute(sql, params)  # execute different statement
+            return list(cur.fetchall())
 
-except Exception as e:
-    print("Unexpected Error happened 'messwerte':", type(e).__name__, e)
-    traceback.print_exc()
+# return first row
+def fetch_one(
+        table: str,
+        where: str,
+        params: Tuple[Any, ...],  # placeholder for WHERE
+        columns: Optional[Iterable[str]] = None  # list of column, if nothing in column replace with '*'
+) -> Optional[Dict[str, Any]]:
+    rows = fetch_all(
+        table,
+        columns=columns,
+        where=where,
+        params=params,
+        limit=1  # set limit for output
+    )
+    return rows[0] if rows else None
 
+# add somthing to a row
+def insert_row(
+        table: str,
+        data: Dict[str, Any]
+) -> int:
+    keys = ", ".join(f"`{k}`" for k in data.keys())
+    placeholders = ", ".join(["%s"] * len(data))
+    sql = f"INSERT INTO {table} ({keys}) VALUES ({placeholders})"
+    values = tuple(data.values())
 
-# read from a database "pflanze"
-sql_pflanze = "SELECT * FROM pflanze"
+    with connection() as conn:  # connect to db
+        with conn.cursor() as cur:  # create courser
+            cur.execute(sql, values)  # execute different statement
+            return cur.lastrowid if hasattr(cur, "lastrowid") else 0
 
-try:
-    with auth.cursor() as cursor:
-        cursor.execute(sql_pflanze)
-        result = cursor.fetchall()
-        for record in result:
-            ID = record.get("ID")
-            Schwellwert = record.get("Schwellwert")
-            Name = record.get("Name")
-            print(ID, Schwellwert, Name)
+# update an existing row
+def update_rows(
+        table: str,
+        data: Dict[str, Any],
+        where: str,
+        params: Tuple[Any, ...]
+) -> int:
+    set_clause = ", ".join(f"`{k}`=%s" for k in data.keys())
+    sql = f"UPDATE {table} SET {set_clause} WHERE {where}"
+    values = tuple(data.values()) + params
 
-except pymysql.MySQLError as e:
-    print("SQL-Error while reading 'pflanze':", e)
-    traceback.print_exc()
-except Exception as e:
-    print("Unexpected Error happened 'pflanze':", type(e).__name__, e)
-    traceback.print_exc()
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, values)
+            return cur.rowcount
 
-finally:
-    if auth is not None:
-        try:
-            auth.close()
-        except Exception:
-            pass
+# delete one row
+def delete_rows(
+        table: str,
+        where: str,
+        params:
+        Tuple[Any, ...]
+) -> int:
+    sql = f"DELETE FROM {table} WHERE {where}"
+
+    with connection() as conn:  # connect to db
+        with conn.cursor() as cur:  # create cursor
+            cur.execute(sql, params)  # execute different statement
+            return cur.rowcount
+
+# get from table
+def get_messwerte_last(limit: int = 5) -> List[Dict[str, Any]]:
+    return fetch_all("messwerte", order_by="ID DESC", limit=limit)
+
+def get_pflanzen() -> List[Dict[str, Any]]:
+    return fetch_all("pflanze", order_by="ID ASC")
+
+# set for table
+def set_pflanze_name(pflanzen_id: int, name: str) -> int:
+    return update_rows("pflanze", {"Name": name}, "ID=%s", (pflanzen_id,))
+
+def set_pflanze_schwellwert(pflanzen_id: int, schwellwert: Any) -> int:
+    return update_rows("pflanze", {"Schwellwert": schwellwert}, "ID=%s", (pflanzen_id,))
+
+# delete from table
+def delete_pflanze(pflanzen_id: int) -> int:
+    return delete_rows("pflanze", "ID=%s", (pflanzen_id,))
+
+def delete_messwerte(messwerte_id: int) -> int:
+    return delete_rows("messwerte", "ID=%s", (messwerte_id,))

@@ -1,24 +1,28 @@
 # operations
-from database import *
+from database import get_messwerte_last
 
 
-# get ony last 5 logs
+# get only last 5 logs
 def read_data():
-    cursor.execute("SELECT * FROM messwerte ORDER BY ID DESC LIMIT 5")
-    records = cursor.fetchone()
+    records = get_messwerte_last(5)
     for record in records:
-        print(record[0])
+        print(record)
+    return records
 
-# get the average of the last 5
-def print_average_last5(column):
+# get average of the last 5 for a column like 'Humidity'
+def average_last5(column):
     try:
-        avg = read_data()
-        if avg is None:
-            print("No data available")
-        else:
-            avg = avg[column]
-            avg = avg.mean()
-            print(avg)
-
+        records = read_data()  # read data
+        if not records:
+            print("No data available")  # if no data where given
+        # if data available get only int and float
+        values = [r.get(column) for r in records if isinstance(r.get(column), (int, float))]
+        if not values:
+            print(f"No numeric values for column '{column}' in the last 5 records")
+        # take values and get average of them
+        avg = sum(values) / len(values)
+        print(avg)
     except Exception as e:
         print("Something went Wrong", e)
+
+print(average_last5(column="Air"))
