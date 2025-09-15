@@ -4,9 +4,12 @@ import board
 import adafruit_bh1750
 import time
 
+import busio
+
+
 class BH1750:
     def __init__(self):
-        self.i2c = board.I2C()  # Create once
+        self.i2c = busio.I2C(board.SCL, board.SDA)  # Create once
         self.sensor = adafruit_bh1750.BH1750(self.i2c)
         time.sleep(0.1)  # Optional: wait for sensor to stabilize
 
