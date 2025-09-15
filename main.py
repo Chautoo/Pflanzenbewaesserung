@@ -1,4 +1,4 @@
-# get all classes
+# main
 from sensors.BH1750 import BH1750
 
 

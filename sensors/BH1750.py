@@ -2,19 +2,23 @@
 
 import board
 import adafruit_bh1750
-import time
+
 
 import busio
 
 
 class BH1750:
     def __init__(self):
-        self.i2c = busio.I2C(board.SCL, board.SDA)  # Create once
-        self.sensor = adafruit_bh1750.BH1750(self.i2c)
-        time.sleep(0.1)  # Optional: wait for sensor to stabilize
+        i2c = busio.I2C(board.SCL, board.SDA)  # Pi 5: GPIO 2 & 3 (i2c-1)
+        sensor = adafruit_bh1750.BH1750(i2c)
+        lux = sensor.lux
 
-    def get_value(self):
-        return self.sensor.lux
+        #self.i2c = busio.I2C(board.SCL, board.SDA)  # Create once
+        #self.sensor = adafruit_bh1750.BH1750(self.i2c)
+        #time.sleep(0.1)  # Optional: wait for sensor to stabilize
+
+    #def get_value(self):
+        #return self.sensor.lux
 
 
 
