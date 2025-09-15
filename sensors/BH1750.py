@@ -1,26 +1,17 @@
 # Light Sensor
 
-import board
-import adafruit_bh1750
-
-
-import busio
+import smbus2
+import time
 
 
 class BH1750:
     def __init__(self):
-        i2c = busio.I2C(board.SCL, board.SDA)  # Pi 5: GPIO 2 & 3 (i2c-1)
-        sensor = adafruit_bh1750.BH1750(i2c)
-        lux = sensor.lux
+        self.BH1750_ADDR = 0x23
+        self.MODE = 0x10
+        self.bus = smbus2.SMBus(1)
 
-        #self.i2c = busio.I2C(board.SCL, board.SDA)  # Create once
-        #self.sensor = adafruit_bh1750.BH1750(self.i2c)
-        #time.sleep(0.1)  # Optional: wait for sensor to stabilize
-
-    #def get_value(self):
-        #return self.sensor.lux
-
-
-
-
-
+    def read_lux(self):
+        data = self.bus.read_i2c_block_data(self.BH1750_ADDR, self.MODE, 2)
+        raw = (data[0] << 8) + data[1]
+        lux = raw / 1.2
+        return lux

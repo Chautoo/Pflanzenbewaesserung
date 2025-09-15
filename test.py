@@ -1,39 +1,38 @@
 import time
+import board
+import adafruit_dht
 import smbus2
 
-# BH1750 Address (default address is 0x23)
-BH1750_ADDR = 0x23
+# Initialize the DHT22 sensor
+dhtDevice = adafruit_dht.DHT22(board.D4, use_pulseio=False)
 
-# Power on the sensor
-POWER_ON = 0x01
-RESET = 0x07
+# Initialize the I2C bus (default address 0x48 for an example)
+i2c_bus = smbus2.SMBus(1)  # I2C bus 1 on Raspberry Pi
+i2c_address = 0x48  # Change this to the actual address of your I2C sensor
 
-# Mode setting (continuous high resolution mode)
-MODE = 0x10
+while True:
+    try:
+        # Read from the DHT22 sensor
+        temperature_c = dhtDevice.temperature
+        temperature_f = temperature_c * (9 / 5) + 32
+        humidity = dhtDevice.humidity
 
-# Initialize the I2C bus
-bus = smbus2.SMBus(1)
+        print(f"Temp: {temperature_f:.1f} F / {temperature_c:.1f} C    Humidity: {humidity}%")
 
-# Initialize the sensor
-bus.write_byte(BH1750_ADDR, POWER_ON)
-time.sleep(0.2)
-bus.write_byte(BH1750_ADDR, RESET)
-time.sleep(0.2)
-bus.write_byte(BH1750_ADDR, MODE)
+        # Read data from the I2C device (example: reading 2 bytes from address 0x48)
+        data = i2c_bus.read_i2c_block_data(i2c_address, 0x00, 2)  # Adjust register address (0x00) as needed
+        sensor_value = (data[0] << 8) + data[1]  # Combine the two bytes
+        print(f"I2C Sensor Value: {sensor_value}")
 
-# Function to read the light value in lux
-def read_light():
-    data = bus.read_i2c_block_data(BH1750_ADDR, 0, 2)
-    light_level = (data[0] << 8) + data[1]  # Combine two bytes
-    lux = light_level / 1.2  # Convert to lux (as per the BH1750 datasheet)
-    return lux
+    except RuntimeError as error:
+        # Handle DHT22 errors
+        print(error.args[0])
+        time.sleep(2.0)
+        continue
+    except Exception as error:
+        # Handle general errors
+        dhtDevice.exit()
+        i2c_bus.close()
+        raise error
 
-# Read and print the light level every 2 seconds
-try:
-    while True:
-        lux = read_light()
-        print(f"Light Level: {lux:.2f} lux")
-        time.sleep(2)
-
-except KeyboardInterrupt:
-    print("Program stopped.")
+    time.sleep(2.0)

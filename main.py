@@ -4,7 +4,7 @@ from sensors.BH1750 import BH1750
 
 def readLight():
         lightSensor = BH1750()
-        lux = lightSensor.get_value()
+        lux = lightSensor.read_lux()
         print("Lux: ", lux)
 
 # start program
