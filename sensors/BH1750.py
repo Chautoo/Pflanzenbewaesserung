@@ -1,16 +1,19 @@
 # Light Sensor
 
+import board
+import adafruit_bh1750
+import time
 
 class BH1750:
-    def __init__(self, bus, address, lightlevel):
-        self.bus = bus
-        self.address = address
+    def __init__(self):
+        self.i2c = board.I2C()  # Create once
+        self.sensor = adafruit_bh1750.BH1750(self.i2c)
+        time.sleep(0.1)  # Optional: wait for sensor to stabilize
 
-        self.adjustLight = lightlevel
+    def get_value(self):
+        return self.sensor.lux
 
-        # Adjust light level (set / get)
-        def set_adjustLight(self):
-            return lightlevel
 
-        def get_adjustLight(self):
-            return lightlevel
+
+
+
