@@ -1,38 +1,54 @@
+#!/usr/bin/env python3
+import lgpio
 import time
-import board
-import adafruit_dht
-import smbus2
 
-# Initialize the DHT22 sensor
-dhtDevice = adafruit_dht.DHT22(board.D4, use_pulseio=False)
 
-# Initialize the I2C bus (default address 0x48 for an example)
-i2c_bus = smbus2.SMBus(1)  # I2C bus 1 on Raspberry Pi
-i2c_address = 0x48  # Change this to the actual address of your I2C sensor
-
-while True:
+def main():
+    # GPIO Chip öffnen
     try:
-        # Read from the DHT22 sensor
-        temperature_c = dhtDevice.temperature
-        temperature_f = temperature_c * (9 / 5) + 32
-        humidity = dhtDevice.humidity
+        h = lgpio.gpiochip_open(4)  # Ubuntu verwendet oft Chip 4 für Pi 5
+    except Exception as e:
+        print(f"Fehler beim Öffnen des GPIO Chips: {e}")
+        # Versuche andere Chip-Nummern
+        for chip in range(5):
+            try:
+                h = lgpio.gpiochip_open(chip)
+                print(f"GPIO Chip {chip} erfolgreich geöffnet")
+                break
+            except:
+                continue
+        else:
+            print("Kein GPIO Chip gefunden")
+            return
 
-        print(f"Temp: {temperature_f:.1f} F / {temperature_c:.1f} C    Humidity: {humidity}%")
+    pin = 12
+    frequency = 1000
 
-        # Read data from the I2C device (example: reading 2 bytes from address 0x48)
-        data = i2c_bus.read_i2c_block_data(i2c_address, 0x00, 2)  # Adjust register address (0x00) as needed
-        sensor_value = (data[0] << 8) + data[1]  # Combine the two bytes
-        print(f"I2C Sensor Value: {sensor_value}")
+    try:
+        # PWM starten mit 0% Duty Cycle
+        lgpio.tx_pwm(h, pin, frequency, 0)
 
-    except RuntimeError as error:
-        # Handle DHT22 errors
-        print(error.args[0])
-        time.sleep(2.0)
-        continue
-    except Exception as error:
-        # Handle general errors
-        dhtDevice.exit()
-        i2c_bus.close()
-        raise error
+        print("PWM gestartet. Drücke Ctrl+C zum Beenden...")
 
-    time.sleep(2.0)
+        while True:
+            # Von 0% auf 100%
+            for duty in range(0, 101, 5):
+                lgpio.tx_pwm(h, pin, frequency, duty)
+                time.sleep(0.1)
+
+            # Von 100% auf 0%
+            for duty in range(100, -1, -5):
+                lgpio.tx_pwm(h, pin, frequency, duty)
+                time.sleep(0.1)
+
+    except KeyboardInterrupt:
+        print("\nProgramm beendet")
+    except Exception as e:
+        print(f"Fehler: {e}")
+    finally:
+        lgpio.tx_pwm(h, pin, frequency, 0)  # PWM stoppen
+        lgpio.gpiochip_close(h)
+
+
+if __name__ == "__main__":
+    main()
