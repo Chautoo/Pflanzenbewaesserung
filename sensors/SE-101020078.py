@@ -1,7 +1,7 @@
 # Air quality sensor
 
 
-class MP503:
+class SE101020078:
     def __init__(self, bus, address, quality):
         self.bus = bus
         self.address = address

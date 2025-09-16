@@ -1,7 +1,7 @@
 # Light Sensor
+from time import sleep
 
 import smbus2
-import time
 
 
 class BH1750:
@@ -11,6 +11,7 @@ class BH1750:
         self.bus = smbus2.SMBus(1)
 
     def read_lux(self):
+        sleep(1)
         data = self.bus.read_i2c_block_data(self.BH1750_ADDR, self.MODE, 2)
         raw = (data[0] << 8) + data[1]
         lux = raw / 1.2
