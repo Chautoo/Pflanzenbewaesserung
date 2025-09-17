@@ -1,77 +1,41 @@
-import smbus2
 import time
+import board
+import adafruit_dht
 
-# BME280 I2C address
-BME280_ADDR = 0x77  # Or 0x77 depending on your sensor's address
+class DHT22:
+    def __init__(self):
+        print("Initialisiere DHT22 Sensor...")
 
-# Register addresses for BME280
-BME280_REG_TEMP_XLSB = 0xFC
-BME280_REG_TEMP_LSB = 0xFB
-BME280_REG_TEMP_MSB = 0xFA
-BME280_REG_PRESS_XLSB = 0xF8
-BME280_REG_PRESS_LSB = 0xF7
-BME280_REG_PRESS_MSB = 0xF6
-BME280_REG_HUM_XLSB = 0xFD
-BME280_REG_HUM_LSB = 0xFE
-BME280_REG_HUM_MSB = 0xF7
+        try:
+            self.dhtDevice = adafruit_dht.DHT22(board.D4, use_pulseio=False)
+        except Exception as e:
+            print(f"Fehler bei der Initialisierung des Sensors: {e}")
+            raise
 
-# Initialize I2C (SMBus)
-bus = smbus2.SMBus(1)  # '1' indicates the I2C bus on Raspberry Pi
+    def read(self):
+        try:
+            temperature_c = self.dhtDevice.temperature
+            humidity = self.dhtDevice.humidity
 
+            if temperature_c is None or humidity is None:
+                print("Sensor konnte nicht gelesen werden (None-Werte).")
+                return
 
-# Function to read a 16-bit value from a register
-def read_reg_16(reg):
-    msb = bus.read_byte_data(BME280_ADDR, reg)
-    lsb = bus.read_byte_data(BME280_ADDR, reg + 1)
-    return (msb << 8) + lsb
+            temperature_f = temperature_c * (9 / 5) + 32
 
+            print(f"Temp: {temperature_f:.1f} F / {temperature_c:.1f} C    Humidity: {humidity}%")
 
-# Function to read temperature, humidity, and pressure from BME280
-def read_bme280():
-    # Read raw temperature data
-    temp_msb = bus.read_byte_data(BME280_ADDR, BME280_REG_TEMP_MSB)
-    temp_lsb = bus.read_byte_data(BME280_ADDR, BME280_REG_TEMP_LSB)
-    temp_xlsb = bus.read_byte_data(BME280_ADDR, BME280_REG_TEMP_XLSB)
+        except RuntimeError as error:
+            print(f"Lese-Fehler: {error.args[0]}")
 
-    # Read raw humidity data
-    hum_msb = bus.read_byte_data(BME280_ADDR, BME280_REG_HUM_MSB)
-    hum_lsb = bus.read_byte_data(BME280_ADDR, BME280_REG_HUM_LSB)
+        except Exception as error:
+            print("Kritischer Fehler, Sensor wird beendet.")
+            self.dhtDevice.exit()
+            raise error
 
-    # Read raw pressure data
-    press_msb = bus.read_byte_data(BME280_ADDR, BME280_REG_PRESS_MSB)
-    press_lsb = bus.read_byte_data(BME280_ADDR, BME280_REG_PRESS_LSB)
-    press_xlsb = bus.read_byte_data(BME280_ADDR, BME280_REG_PRESS_XLSB)
+if __name__ == "__main__":
+    sensor = DHT22()
 
-    # Combine the bytes to form the raw values
-    temp_raw = (temp_msb << 12) + (temp_lsb << 4) + (temp_xlsb >> 4)
-    hum_raw = (hum_msb << 8) + hum_lsb
-    press_raw = (press_msb << 12) + (press_lsb << 4) + (press_xlsb >> 4)
-
-    # Convert raw values to actual temperature, humidity, and pressure
-    temperature = (
-                              temp_raw / 16384.0) - 40.0  # You can adjust this based on the calibration values from the sensor datasheet
-    humidity = hum_raw / 1024.0
-    pressure = press_raw / 256.0
-
-    return temperature, humidity, pressure
-
-
-# Main program
-try:
     while True:
-        # Read sensor data
-        temperature, humidity, pressure = read_bme280()
-
-        # Print the results
-        print(f"Temperature: {temperature:.2f} °C")
-        print(f"Humidity: {humidity:.2f} %")
-        print(f"Pressure: {pressure:.2f} hPa")
-
-        # Wait before next reading
+        sensor.read()
         time.sleep(2)
-
-except KeyboardInterrupt:
-    print("Program interrupted")
-
-finally:
-    bus.close()

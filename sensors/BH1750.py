@@ -1,4 +1,5 @@
 # Light Sensor
+
 from time import sleep
 
 import smbus2
