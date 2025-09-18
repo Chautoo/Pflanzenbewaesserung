@@ -1,36 +1,26 @@
-# temperature and humidity sensor
+# Temperature & Humidity
 
-import time
 import board
 import adafruit_dht
+import time
 
 class DHT22:
-    def __init__(self):
-        print("Initialisiere DHT22 Sensor...")
+    def __init__(self, pin=board.D17):
+        self.sensor = adafruit_dht.DHT22(pin, use_pulseio=False)
+        self.temperature = None
+        self.humidity = None
+        self.read_sensor()
 
-        try:
-            self.dhtDevice = adafruit_dht.DHT22(board.D4, use_pulseio=False)
-        except Exception as e:
-            print(f"Fehler bei der Initialisierung des Sensors: {e}")
-            raise
-
-    def read(self):
-        try:
-            temperature_c = self.dhtDevice.temperature
-            humidity = self.dhtDevice.humidity
-
-            if temperature_c is None or humidity is None:
-                print("Sensor konnte nicht gelesen werden (None-Werte).")
+    def read_sensor(self):
+        for _ in range(5):
+            try:
+                self.temperature = self.sensor.temperature
+                self.humidity = self.sensor.humidity
                 return
-
-            temperature_f = temperature_c * (9 / 5) + 32
-
-            print(f"Temp: {temperature_f:.1f} F / {temperature_c:.1f} C    Humidity: {humidity}%")
-
-        except RuntimeError as error:
-            print(f"Lese-Fehler: {error.args[0]}")
-
-        except Exception as error:
-            print("Kritischer Fehler, Sensor wird beendet.")
-            self.dhtDevice.exit()
-            raise error
+            except RuntimeError as e:
+                print("RuntimeError:", e)
+                time.sleep(2.0)
+            except Exception as e:
+                print("Unexpected error:", e)
+                break
+        self.sensor.exit()

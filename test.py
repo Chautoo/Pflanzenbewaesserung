@@ -1,41 +1,63 @@
-import time
-import board
-import adafruit_dht
+import smbus2
+from time import sleep
 
-class DHT22:
-    def __init__(self):
-        print("Initialisiere DHT22 Sensor...")
+class SE101020635:
+    def __init__(self, address=0x77):
+        self.address = address
+        self.high_addr = 0x78
+        self.low_addr = 0x77
+        self.bus = smbus2.SMBus(1)
+        # You might need to use buffer size 8 and 12 depending which address you read from
+        self.low_count = 8
+        self.high_count = 12
+        self.reg_config = 0x01  # guess based on community code
 
+    def read_sections(self):
+        # Read from “low” address (8 sections)
         try:
-            self.dhtDevice = adafruit_dht.DHT22(board.D4, use_pulseio=False)
+            low_data = self.bus.read_i2c_block_data(self.low_addr, self.reg_config, self.low_count)
         except Exception as e:
-            print(f"Fehler bei der Initialisierung des Sensors: {e}")
-            raise
+            low_data = None
+            print(f"Error reading low 8 sections: {e}")
 
-    def read(self):
+        # Read from “high” address (12 sections)
         try:
-            temperature_c = self.dhtDevice.temperature
-            humidity = self.dhtDevice.humidity
+            high_data = self.bus.read_i2c_block_data(self.high_addr, self.reg_config, self.high_count)
+        except Exception as e:
+            high_data = None
+            print(f"Error reading high 12 sections: {e}")
 
-            if temperature_c is None or humidity is None:
-                print("Sensor konnte nicht gelesen werden (None-Werte).")
-                return
+        return low_data, high_data
 
-            temperature_f = temperature_c * (9 / 5) + 32
+    def compute_level(self, low_data, high_data, threshold=100):
+        """
+        Count how many capacitive pads (sections) detect water.
+        threshold: raw reading above which we consider “wet”
+        """
+        if low_data is None or high_data is None:
+            return None
 
-            print(f"Temp: {temperature_f:.1f} F / {temperature_c:.1f} C    Humidity: {humidity}%")
+        touch_val = 0
 
-        except RuntimeError as error:
-            print(f"Lese-Fehler: {error.args[0]}")
+        # Count pads above threshold
+        for val in low_data:
+            if val > threshold:
+                touch_val += 1
+        for val in high_data:
+            if val > threshold:
+                touch_val += 1
 
-        except Exception as error:
-            print("Kritischer Fehler, Sensor wird beendet.")
-            self.dhtDevice.exit()
-            raise error
+        # Convert pad count to percentage (total pads = low+high)
+        total_pads = len(low_data) + len(high_data)
+        percentage = (touch_val / total_pads) * 100
+        return percentage
 
 if __name__ == "__main__":
-    sensor = DHT22()
-
+    sensor = SE101020635()
     while True:
-        sensor.read()
-        time.sleep(2)
+        low, high = sensor.read_sections()
+        print("Low 8 data:", low)
+        print("High 12 data:", high)
+        level = sensor.compute_level(low, high, threshold=100)
+        print("Water level ≈ {:.1f}%".format(level if level is not None else 0))
+        sleep(2)

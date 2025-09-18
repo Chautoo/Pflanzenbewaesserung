@@ -1,11 +1,10 @@
 # PH Value
 
-import smbus2
 import time
 import struct
 
 
-class CRT14016P_ADC:
+class CRT14016P:
     def __init__(self):
 
         # ADS1115 Constants
