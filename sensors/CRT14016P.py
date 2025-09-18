@@ -28,12 +28,14 @@ class CRT14016P:
         CONFIG_DR_128SPS = 0x0080
         CONFIG_COMP_QUE_DISABLE = 0x0003
 
+
         def build_config(channel):
             """
             Build the 16-bit config register value for the given channel.
             """
             if channel not in CONFIG_MUX:
                 raise ValueError("Invalid channel. Must be 0-3.")
+
             return (CONFIG_OS_SINGLE |
                     CONFIG_MUX[channel] |
                     GAIN |

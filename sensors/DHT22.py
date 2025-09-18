@@ -4,12 +4,15 @@ import board
 import adafruit_dht
 import time
 
+
 class DHT22:
     def __init__(self, pin=board.D17):
+
         self.sensor = adafruit_dht.DHT22(pin, use_pulseio=False)
         self.temperature = None
         self.humidity = None
         self.read_sensor()
+
 
     def read_sensor(self):
         for _ in range(5):

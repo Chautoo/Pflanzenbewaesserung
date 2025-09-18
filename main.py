@@ -1,6 +1,5 @@
-# main
-
 from time import sleep
+from datetime import datetime
 
 from sensors.BH1750 import BH1750
 from sensors.SE101020635 import SE101020635
@@ -8,50 +7,81 @@ from sensors.DHT22 import DHT22
 from utils.api import LaravelAPIClient
 
 
-# Light Sensor
-def readLight():
-        lightSensor = BH1750()
-        lux = lightSensor.read_lux()
-        print("Lux: ", lux)
+# light sensor
+def read_light():
+    light_sensor = BH1750()
+    lux = light_sensor.read_lux()
+    return round(lux, 2)
 
-# Water Value
-def water_value():
+
+# water level
+def read_water_level():
     sensor = SE101020635()
     low, high = sensor.read_sections()
-    #print("Low 8 data:", low)
-    #print("High 12 data:", high)
     level = sensor.compute_level(low, high, threshold=100)
-    print("Water level ≈ {:.1f}%".format(level if level is not None else 0))
-    sleep(2)
+    return round(level if level is not None else 0, 1)
 
-# temperature_humidity
-def temperature_humidity():
+
+# temperature / humidity
+def read_temperature_humidity():
     sensor = DHT22()
-    print("Temperature:", sensor.temperature)
-    print("Humidity:", sensor.humidity)
+    return sensor.temperature, sensor.humidity
 
-# PH Sensor
+
+# ph
 def voltage_to_ph(voltage, offset=0.0):
-    """
-    Convert voltage to estimated pH value.
-    Assumes 2.5V = pH 7, and ~0.18V per pH step.
-    """
-    return 7.0 + ((2.5 - voltage) / 0.18) + offset
-print("PH Value: ", voltage_to_ph(voltage=3))
+    ph = 7.0 + ((2.5 - voltage) / 0.18) + offset
+    return round(ph, 2)
 
-# API
+
+# read from api
 def api_get():
     try:
         client = LaravelAPIClient(env_path=".env")
         response = client.get("plants")
-        print(response)
-    except Exception as e:
-        print(e)
 
-# start program
+        if response and isinstance(response, list) and len(response) > 0:
+            print(response)
+    except Exception as e:
+        print(f"Error while reaching the API: {e}")
+
+
+# send to api
+def api_post_sensor_data():
+    try:
+        # get date from sensors
+        temperature, humidity = read_temperature_humidity()
+        light = read_light()
+        water = read_water_level()
+        #ph = voltage_to_ph(voltage=3)
+
+        # API-Client initialising
+        client = LaravelAPIClient(env_path=".env")
+
+        # Data Object
+        sensor_data = {
+            "humidity": humidity,
+            "temperature": temperature,
+            "light": light,
+            "water": water,
+            "timestamp": datetime.now().isoformat()
+        }
+
+        # send data
+        response = client.post("measures", sensor_data)
+        print("Send Data...: ", response)
+
+    except Exception as e:
+        print("Error while sending data: ", e)
+
+
+# start main
 if __name__ == '__main__':
-    readLight()
-    water_value()
-    temperature_humidity()
-    voltage_to_ph(voltage=3)
-    api_get()
+    while True:
+        print("Start uplaod: ", datetime.now().isoformat())
+
+        api_post_sensor_data()
+        api_get()
+
+        print("Wait 10 Minutes before send data again...")
+        sleep(600)  # 600 Sec = 10 Min

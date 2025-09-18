@@ -1,9 +1,10 @@
-# Water level
+# water level
 
 import smbus2
 
 class SE101020635:
     def __init__(self, address=0x77):
+
         self.address = address
         self.high_addr = 0x78
         self.low_addr = 0x77
@@ -12,6 +13,7 @@ class SE101020635:
         self.low_count = 8
         self.high_count = 12
         self.reg_config = 0x01  # guess based on community code
+
 
     def read_sections(self):
         # Read from “low” address (8 sections)
@@ -29,6 +31,7 @@ class SE101020635:
             print(f"Error reading high 12 sections: {e}")
 
         return low_data, high_data
+
 
     def compute_level(self, low_data, high_data, threshold=100):
         """

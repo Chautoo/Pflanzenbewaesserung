@@ -93,4 +93,3 @@ class LaravelAPIClient:
 
     def delete(self, endpoint):
         return self.request("DELETE", endpoint)
-
