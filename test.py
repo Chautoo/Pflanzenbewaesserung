@@ -1,63 +1,41 @@
-import smbus2
-from time import sleep
+from gpiozero import OutputDevice
+import time
 
-class SE101020635:
-    def __init__(self, address=0x77):
-        self.address = address
-        self.high_addr = 0x78
-        self.low_addr = 0x77
-        self.bus = smbus2.SMBus(1)
-        # You might need to use buffer size 8 and 12 depending which address you read from
-        self.low_count = 8
-        self.high_count = 12
-        self.reg_config = 0x01  # guess based on community code
+# Create MOSFET control object for GPIO 13
+pump = OutputDevice(13)
 
-    def read_sections(self):
-        # Read from “low” address (8 sections)
-        try:
-            low_data = self.bus.read_i2c_block_data(self.low_addr, self.reg_config, self.low_count)
-        except Exception as e:
-            low_data = None
-            print(f"Error reading low 8 sections: {e}")
 
-        # Read from “high” address (12 sections)
-        try:
-            high_data = self.bus.read_i2c_block_data(self.high_addr, self.reg_config, self.high_count)
-        except Exception as e:
-            high_data = None
-            print(f"Error reading high 12 sections: {e}")
+def turn_pump_on():
+    """Turn the pump on"""
+    pump.on()
+    print("Pump ON")
 
-        return low_data, high_data
 
-    def compute_level(self, low_data, high_data, threshold=100):
-        """
-        Count how many capacitive pads (sections) detect water.
-        threshold: raw reading above which we consider “wet”
-        """
-        if low_data is None or high_data is None:
-            return None
+def turn_pump_off():
+    """Turn the pump off"""
+    pump.off()
+    print("Pump OFF")
 
-        touch_val = 0
 
-        # Count pads above threshold
-        for val in low_data:
-            if val > threshold:
-                touch_val += 1
-        for val in high_data:
-            if val > threshold:
-                touch_val += 1
+def test_pump():
+    """Test the pump on/off functionality"""
+    print("Testing pump...")
 
-        # Convert pad count to percentage (total pads = low+high)
-        total_pads = len(low_data) + len(high_data)
-        percentage = (touch_val / total_pads) * 100
-        return percentage
+    # Turn on for 3 seconds
+    turn_pump_on()
+    time.sleep(15)
+
+    # Turn off for 2 seconds
+    turn_pump_off()
+    time.sleep(2)
+
+    print("Test complete")
+
 
 if __name__ == "__main__":
-    sensor = SE101020635()
-    while True:
-        low, high = sensor.read_sections()
-        print("Low 8 data:", low)
-        print("High 12 data:", high)
-        level = sensor.compute_level(low, high, threshold=100)
-        print("Water level ≈ {:.1f}%".format(level if level is not None else 0))
-        sleep(2)
+    try:
+        test_pump()
+    except KeyboardInterrupt:
+        print("\nStopping...")
+    finally:
+        turn_pump_off()  # Ensure pump is off when exiting

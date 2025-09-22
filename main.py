@@ -1,8 +1,9 @@
-from time import sleep
+from time import sleep, time
 from datetime import datetime
 
 from sensors.BH1750 import BH1750
 from sensors.SE101020635 import SE101020635
+from sensors.MQ135 import MQ135
 from sensors.DHT22 import DHT22
 from utils.api import LaravelAPIClient
 
@@ -34,6 +35,22 @@ def voltage_to_ph(voltage, offset=0.0):
     return round(ph, 2)
 
 
+# air quality
+def air_quality():
+    try:
+        sensor = MQ135
+
+        print("Starte MQ135 Messung – Strg+C zum Beenden\n")
+        while True:
+            data = sensor.read_all()
+            print(f"Spannung: {data['voltage']:.3f} V | Rs: {data['rs']:.1f} Ω | ppm: {data['ppm']:.2f}")
+            time.sleep(1)
+
+    except KeyboardInterrupt:
+        print("\nMessung beendet.")
+    finally:
+        sensor.close()
+
 # read from api
 def api_get():
     try:
@@ -60,11 +77,11 @@ def api_post_sensor_data():
 
         # Data Object
         sensor_data = {
-            "humidity": humidity,
-            "temperature": temperature,
-            "light": light,
-            "water": water,
-            "timestamp": datetime.now().isoformat()
+            "id" : id,
+            "humidity" : humidity,
+            "temperature" : temperature,
+            "light" : light,
+            "water" : water,
         }
 
         # send data

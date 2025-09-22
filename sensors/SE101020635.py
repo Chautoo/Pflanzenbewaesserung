@@ -1,4 +1,4 @@
-# water level
+# waterlevel
 
 import smbus2
 
