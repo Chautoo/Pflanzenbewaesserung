@@ -1,26 +1,29 @@
-class PChannelMosfet:
-    def __init__(self, pin):
-        self._led = LED(pin)
+# Temperature & Humidity
 
-    def on(self):
-        self._led.off()  # GPIO LOW -> MOSFET ON
-    def off(self):
-        self._led.on()   # GPIO HIGH -> MOSFET OFF
-    def toggle(self):
-        self._led.toggle()
+import board
+import adafruit_dht
+import time
 
-from time import sleep
 
-mosfet = PChannelMosfet(17)
+class DHT22:
+    def __init__(self, pin=board.D17):
 
-try:
-    while True:
-        mosfet.on()  # Turn ON load
-        print("P-Channel MOSFET ON")
-        sleep(10)
-        mosfet.off()  # Turn OFF load
-        print("P-Channel MOSFET OFF")
-        sleep(5)
+        self.sensor = adafruit_dht.DHT22(pin, use_pulseio=False)
+        self.temperature = None
+        self.humidity = None
+        self.read_sensor()
 
-except KeyboardInterrupt:
-    print("Program stopped")
+
+    def read_sensor(self):
+        for _ in range(5):
+            try:
+                self.temperature = self.sensor.temperature
+                self.humidity = self.sensor.humidity
+                return
+            except RuntimeError as e:
+                print("RuntimeError:", e)
+                time.sleep(2.0)
+            except Exception as e:
+                print("Unexpected error:", e)
+                break
+        self.sensor.exit()

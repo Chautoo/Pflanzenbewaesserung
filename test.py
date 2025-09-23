@@ -1,41 +1,54 @@
-from gpiozero import OutputDevice
+#!/usr/bin/env python3
+import lgpio
 import time
 
-# Create MOSFET control object for GPIO 13
-pump = OutputDevice(13)
 
+def main():
+    # GPIO Chip öffnen
+    try:
+        h = lgpio.gpiochip_open(4)  # Ubuntu verwendet oft Chip 4 für Pi 5
+    except Exception as e:
+        print(f"Fehler beim Öffnen des GPIO Chips: {e}")
+        # Versuche andere Chip-Nummern
+        for chip in range(5):
+            try:
+                h = lgpio.gpiochip_open(chip)
+                print(f"GPIO Chip {chip} erfolgreich geöffnet")
+                break
+            except:
+                continue
+        else:
+            print("Kein GPIO Chip gefunden")
+            return
 
-def turn_pump_on():
-    """Turn the pump on"""
-    pump.on()
-    print("Pump ON")
+    pin = 12
+    frequency = 1000
 
+    try:
+        # PWM starten mit 0% Duty Cycle
+        lgpio.tx_pwm(h, pin, frequency, 0)
 
-def turn_pump_off():
-    """Turn the pump off"""
-    pump.off()
-    print("Pump OFF")
+        print("PWM gestartet. Drücke Ctrl+C zum Beenden...")
 
+        while True:
+            # Von 0% auf 100%
+            for duty in range(0, 101, 5):
+                lgpio.tx_pwm(h, pin, frequency, duty)
+                time.sleep(0.1)
 
-def test_pump():
-    """Test the pump on/off functionality"""
-    print("Testing pump...")
+            # Von 100% auf 0%
+            for duty in range(100, -1, -5):
+                lgpio.tx_pwm(h, pin, frequency, duty)
+                time.sleep(0.1)
 
-    # Turn on for 3 seconds
-    turn_pump_on()
-    time.sleep(15)
-
-    # Turn off for 2 seconds
-    turn_pump_off()
-    time.sleep(2)
-
-    print("Test complete")
+    except KeyboardInterrupt:
+        print("\nProgramm beendet")
+    except Exception as e:
+        print(f"Fehler: {e}")
+    finally:
+        lgpio.tx_pwm(h, pin, frequency, 0)  # PWM stoppen
+        lgpio.gpiochip_close(h)
 
 
 if __name__ == "__main__":
-    try:
-        test_pump()
-    except KeyboardInterrupt:
-        print("\nStopping...")
-    finally:
-        turn_pump_off()  # Ensure pump is off when exiting
+    main()
