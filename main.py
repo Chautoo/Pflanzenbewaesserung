@@ -1,10 +1,11 @@
-from time import sleep, time
+import time
 from datetime import datetime
 
 from sensors.BH1750 import BH1750
 from sensors.SE101020635 import SE101020635
 from sensors.MQ135 import MQ135
 from sensors.DHT22 import DHT22
+from sensors.CT0016MS import CT10016MS
 from utils.api import LaravelAPIClient
 
 
@@ -51,6 +52,27 @@ def air_quality():
     finally:
         sensor.close()
 
+
+# automatic
+def pump():
+    controller = CT10016MS(
+        gpio_pin=13,
+        api_url="http://192.168.189.17/api/",
+        plant_name="Monsterra",
+        temp_threshold=25.0,
+        humidity_threshold=45.0
+    )
+
+    try:
+        while True:
+            controller.run_check()
+            time.sleep(60)  # alle 60 Sekunden prüfen
+    except KeyboardInterrupt:
+        print("\n Stops manually.")
+    finally:
+        controller.shutdown()
+
+
 # read from api
 def api_get():
     try:
@@ -77,7 +99,7 @@ def api_post_sensor_data():
 
         # Data Object
         sensor_data = {
-            "id" : id,
+            "plant_id" : client.getEnvValue("PLANT_ID"),
             "humidity" : humidity,
             "temperature" : temperature,
             "light" : light,
@@ -101,4 +123,4 @@ if __name__ == '__main__':
         api_get()
 
         print("Wait 10 Minutes before send data again...")
-        sleep(600)  # 600 Sec = 10 Min
+        time.sleep(600)  # 600 Sec = 10 Min

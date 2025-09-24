@@ -1,54 +1,23 @@
-#!/usr/bin/env python3
-import lgpio
 import time
+from datetime import datetime
 
+from sensors.BH1750 import BH1750
+from sensors.SE101020635 import SE101020635
+from sensors.MQ135 import MQ135
+from sensors.DHT22 import DHT22
+from sensors.CT0016MS import CT10016MS
+from utils.api import LaravelAPIClient
 
-def main():
-    # GPIO Chip öffnen
-    try:
-        h = lgpio.gpiochip_open(4)  # Ubuntu verwendet oft Chip 4 für Pi 5
-    except Exception as e:
-        print(f"Fehler beim Öffnen des GPIO Chips: {e}")
-        # Versuche andere Chip-Nummern
-        for chip in range(5):
-            try:
-                h = lgpio.gpiochip_open(chip)
-                print(f"GPIO Chip {chip} erfolgreich geöffnet")
-                break
-            except:
-                continue
-        else:
-            print("Kein GPIO Chip gefunden")
-            return
+try:
+    sensor = MQ135()
 
-    pin = 12
-    frequency = 1000
+    print("Starte MQ135 Messung – Strg+C zum Beenden\n")
+    while True:
+        data = sensor.read_all()
+        print(f"Spannung: {data['voltage']:.3f} V | Rs: {data['rs']:.1f} Ω | ppm: {data['ppm']:.2f}")
+        time.sleep(1)
 
-    try:
-        # PWM starten mit 0% Duty Cycle
-        lgpio.tx_pwm(h, pin, frequency, 0)
-
-        print("PWM gestartet. Drücke Ctrl+C zum Beenden...")
-
-        while True:
-            # Von 0% auf 100%
-            for duty in range(0, 101, 5):
-                lgpio.tx_pwm(h, pin, frequency, duty)
-                time.sleep(0.1)
-
-            # Von 100% auf 0%
-            for duty in range(100, -1, -5):
-                lgpio.tx_pwm(h, pin, frequency, duty)
-                time.sleep(0.1)
-
-    except KeyboardInterrupt:
-        print("\nProgramm beendet")
-    except Exception as e:
-        print(f"Fehler: {e}")
-    finally:
-        lgpio.tx_pwm(h, pin, frequency, 0)  # PWM stoppen
-        lgpio.gpiochip_close(h)
-
-
-if __name__ == "__main__":
-    main()
+except KeyboardInterrupt:
+    print("\nMessung beendet.")
+finally:
+    sensor.close()

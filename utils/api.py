@@ -93,3 +93,6 @@ class LaravelAPIClient:
 
     def delete(self, endpoint):
         return self.request("DELETE", endpoint)
+
+    def getEnvValue(self, path):
+        return os.getenv(path)
