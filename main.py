@@ -1,3 +1,4 @@
+import threading
 import time
 from datetime import datetime
 
@@ -16,6 +17,7 @@ from utils.localApi import app
 def read_light():
     light_sensor = BH1750()
     lux = light_sensor.read_lux()
+    print("Lux: ", lux)
     return round(lux, 2)
 
 
@@ -24,34 +26,40 @@ def read_water_level():
     sensor = SE101020635()
     low, high = sensor.read_sections()
     level = sensor.compute_level(low, high, threshold=100)
+    print("Water Level: ", level, "%")
     return round(level if level is not None else 0, 1)
 
 
 # temperature / humidity
 def read_temperature_humidity():
     sensor = DHT22()
+
+    if sensor.temperature is None or sensor.humidity is None:
+        print("Failed to read from DHT22 sensor.")
+        return None, None
+
+    print("Temperature:", sensor.temperature, "°C")
+    print("Humidity:", sensor.humidity, "%")
     return sensor.temperature, sensor.humidity
 
 
 # ph
 def voltage_to_ph(voltage, offset=0.0):
     ph = 7.0 + ((2.5 - voltage) / 0.18) + offset
+    print("PH: ", ph)
     return round(ph, 2)
 
 
 # air quality
 def air_quality():
+    sensor = MQ135()
     try:
-        sensor = MQ135
-
-        print("Starte MQ135 Messung – Strg+C zum Beenden\n")
-        while True:
-            data = sensor.read_all()
-            print(f"Spannung: {data['voltage']:.3f} V | Rs: {data['rs']:.1f} Ω | ppm: {data['ppm']:.2f}")
-            time.sleep(1)
+        data = sensor.read_all()
+        print(f"Voltage: {data['voltage']:.3f} V \nRs: {data['rs']:.1f} Ω \nppm: {data['ppm']:.2f}")
+        time.sleep(1)
 
     except KeyboardInterrupt:
-        print("\nMessung beendet.")
+        print("\nMeasurement ended.")
     finally:
         sensor.close()
 
@@ -114,20 +122,25 @@ def api_post_sensor_data():
         print("Error while sending data: ", e)
 
 
-#
-
-
 # start main
-if __name__ == '__main__':
+def run_server():
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+def data_loop():
     while True:
-        print("Start uplaod: ", datetime.now().isoformat())
+        print("Start upload:", datetime.now().isoformat())
 
         api_post_sensor_data()
         api_get()
 
         intervall = int(LaravelAPIClient(env_path=".env").getEnvValue("UPDATE_INTERVALL"))
-
-        print(f"Wait {int(intervall/60)} Minutes before send data again...")
+        print(f"Wait {int(intervall / 60)} Minutes before sending data again...")
         time.sleep(intervall)
+
+if __name__ == '__main__':
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
+
+    # Main thread handles the data loop
+    data_loop()
 
