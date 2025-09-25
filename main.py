@@ -1,12 +1,15 @@
 import time
 from datetime import datetime
 
+import uvicorn
+
 from sensors.BH1750 import BH1750
 from sensors.SE101020635 import SE101020635
 from sensors.MQ135 import MQ135
 from sensors.DHT22 import DHT22
 from sensors.CT0016MS import CT10016MS
 from utils.api import LaravelAPIClient
+from utils.localApi import app
 
 
 # light sensor
@@ -53,20 +56,15 @@ def air_quality():
         sensor.close()
 
 
-# automatic
+# automatic watering
 def pump():
-    controller = CT10016MS(
-        gpio_pin=13,
-        api_url="http://192.168.189.17/api/",
-        plant_name="Monsterra",
-        temp_threshold=25.0,
-        humidity_threshold=45.0
-    )
-
+    controller = CT10016MS()
     try:
         while True:
-            controller.run_check()
-            time.sleep(60)  # alle 60 Sekunden prüfen
+            if not controller.run_check():
+                time.sleep(LaravelAPIClient(env_path=".env").getEnvValue("UPDATE_INTERVALL"))
+            else:
+                time.sleep(15)
     except KeyboardInterrupt:
         print("\n Stops manually.")
     finally:
@@ -92,7 +90,7 @@ def api_post_sensor_data():
         temperature, humidity = read_temperature_humidity()
         light = read_light()
         water = read_water_level()
-        #ph = voltage_to_ph(voltage=3)
+        ph = voltage_to_ph(voltage=3)
 
         # API-Client initialising
         client = LaravelAPIClient(env_path=".env")
@@ -104,6 +102,8 @@ def api_post_sensor_data():
             "temperature" : temperature,
             "light" : light,
             "water" : water,
+            "ph" : ph,
+            "air_quality" : air_quality()
         }
 
         # send data
@@ -114,13 +114,20 @@ def api_post_sensor_data():
         print("Error while sending data: ", e)
 
 
+#
+
+
 # start main
 if __name__ == '__main__':
+    uvicorn.run(app, host="0.0.0.0", port=8000)
     while True:
         print("Start uplaod: ", datetime.now().isoformat())
 
         api_post_sensor_data()
         api_get()
 
-        print("Wait 10 Minutes before send data again...")
-        time.sleep(600)  # 600 Sec = 10 Min
+        intervall = int(LaravelAPIClient(env_path=".env").getEnvValue("UPDATE_INTERVALL"))
+
+        print(f"Wait {int(intervall/60)} Minutes before send data again...")
+        time.sleep(intervall)
+

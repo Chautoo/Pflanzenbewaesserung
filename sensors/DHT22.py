@@ -20,8 +20,7 @@ class DHT22:
                 self.temperature = self.sensor.temperature
                 self.humidity = self.sensor.humidity
                 return
-            except RuntimeError as e:
-                print("RuntimeError:", e)
+            except RuntimeError:
                 time.sleep(2.0)
             except Exception as e:
                 print("Unexpected error:", e)

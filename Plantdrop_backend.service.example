@@ -1,0 +1,13 @@
+[Unit]
+Description=Automatic irrigation system 'Plantdrop'
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /root/PycharmProjects/Pflanzenbewaesserung/main.py
+User=root
+WorkingDirectory=/root/PycharmProjects/Pflanzenbewaesserung
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
