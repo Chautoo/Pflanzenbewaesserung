@@ -1,8 +1,10 @@
 # Pflanzenbewaesserung
 
+</a><img src="https://raw.githubusercontent.com/Nebular-Rene/Plantify/refs/heads/master/public/Plantdrop-Leaf.png" alt="Logo des Projektes ist ein grünes Blat."></a>
+
 ## Einführung
 
-Dieses repo beinhaltet den backend-code für das Projekt "PlantDrop". Es stellt die nötigen Funktionalitäten da, um verschiedene Sensoren mithilfe eines Raspberry Pi zu steuern. In diesem Fall sind die Sensoren für die automatische Bewässerung von Pflanzen gedacht. Daher ist das backend auf diese Sensoren ausgelegt. Das passende Frontend finded ihr in [diesem Repository](https://github.com/FemRene/Plantify).
+Dieses Repositorie beinhaltet den backend-code für das Projekt "PlantDrop". Es stellt die nötigen Funktionalitäten bereit, um verschiedene Sensoren mithilfe eines Raspberry Pi zu steuern. In diesem Fall sind die Sensoren für die automatische Bewässerung von Pflanzen gedacht. Daher ist das backend auf diese Sensoren ausgelegt. Das passende Frontend finded ihr in [diesem Repositorie](https://github.com/FemRene/Plantify).
 
 ## Funktionen
 
@@ -13,7 +15,7 @@ Dieses repo beinhaltet den backend-code für das Projekt "PlantDrop". Es stellt 
 - [x] **Luftqualitätsmessung**<br/>
 - [x] **Wasserstand**<br/> 
 - [x] **API An- & Abfragen**<br/> 
-- [x] **Aktuelle Messwerte**<br/>  
+- [x] **Aktuelle Messwerte**<br/>
 
 ## Voraussetzungen
 
@@ -22,17 +24,18 @@ Dieses repo beinhaltet den backend-code für das Projekt "PlantDrop". Es stellt 
 **Lichtsensor**
 **PH-Sensor**
 **Pumpe**
+**Analog zu Digital Konwerter**
 **Feuchtigkeitssensor**
 **Temperaturseonsor**
 
 Die Hardware kann auf eigene bedürfnisse angepassst werden. Dazu muss jedoch der Code ebenso angepasst werden!
 
 # Software
-[**Raspberry Pi OS (Lite)**](https://www.raspberrypi.com/software/operating-systems/)
-**Python3** 
+[**Raspberry Pi OS (Lite)**](https://www.raspberrypi.com/software/operating-systems/)<br/>
+**Python3**<br/> 
 [**Python 3.11+**](https://www.python.org/downloads/windows/)<br/>
-[**Pip**](https://pypi.org/project/pip/) <br/>
-[**Python Pakete**](https://github.com/Chautoo/Pflanzenbewaesserung/blob/backend/requirements.txt)
+[**Pip**](https://pypi.org/project/pip/)<br/>
+[**Python Pakete**](https://github.com/Chautoo/Pflanzenbewaesserung/blob/backend/requirements.txt)<br/>
 
 ## Installation und Ausführung
 
@@ -41,11 +44,11 @@ Die Hardware kann auf eigene bedürfnisse angepassst werden. Dazu muss jedoch de
    git clone https://github.com/Chautoo/Pflanzenbewaesserung.git
    cd Pflanzenbewaesserung
    `````````
-**2. Ausführen des Codes**
+**2. Ausführung des Codes**
 ```bash
    sudo python3 main.py
    `````````
-**3. Code automatisch ausführen (systemd)**
+**3. Code automatisch bei Systemstart ausführen (systemd)**
 Zuerst muss die datei unter dem folgendem Pfad angelegt werden. 
 ```bash
    sudo nano /etc/systemd/system/Plantdrop_backend.service
